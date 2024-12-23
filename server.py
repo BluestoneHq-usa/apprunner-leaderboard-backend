@@ -1,39 +1,34 @@
-from flask import Flask, request, jsonify # type: ignore
-import redis
+from flask import Flask
+import logging
 import os
+import requests
+import redis
+import json
+import random
 
 app = Flask(__name__)
+    
+@app.route("/getdata")
+def root():
+  logging.basicConfig(level=logging.DEBUG)
+  REDIS_URL = os.getenv('REDIS_URL')
+  logging.debug("Getting redis path" + str(REDIS_URL))
+  r = redis.Redis(host=REDIS_URL, port=9000, db=0)
+  leaderboard_data = r.get('leaderboard_data')
 
-# Get Redis URL from the environment variable, or use a default value
-redis_url = os.getenv('REDIS_URL', 'redis://localhost:8000/0')
+  # Randomly change player scores
+  random_json = json.loads(leaderboard_data);
+  for val in random_json:
+    val['score'] = random.randint(1000, 3000)
+  random_json.sort(key=lambda x: x["score"], reverse=True)
 
-# Create a Redis connection using the URL
-r = redis.from_url(redis_url)
+  rank = 0
+  for val in random_json:
+    rank = rank + 1
+    val['id'] = rank
+  
+  logging.info("Response: " + str(random_json))
+  return str(random_json).replace("\'", "\"")
 
-@app.route('/getdata')
-def get_data():
-    try:
-        leaderboard_data = r.get('leaderboard_data')
-        if leaderboard_data:
-            return leaderboard_data.decode('utf-8'), 200  # Decode bytes to string
-        else:
-            return "No data found", 404
-    except redis.ConnectionError as e:
-        return str(e), 500
-
-@app.route('/setdata', methods=['POST'])
-def set_data():
-    try:
-        # Get JSON data from the request
-        data = request.json
-        if 'leaderboard_data' not in data:
-            return jsonify({"error": "No 'leaderboard_data' key provided"}), 400
-
-        # Set the data in Redis
-        r.set('leaderboard_data', data['leaderboard_data'])
-        return jsonify({"message": "Data set successfully"}), 200
-    except redis.ConnectionError as e:
-        return str(e), 500
-
-if __name__ == '__main__':
-    app.run(debug=True)
+if __name__ == "__main__":
+  app.run()
