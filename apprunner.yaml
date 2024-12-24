@@ -5,12 +5,12 @@ build:
     build:
       - pip install -r requirements.txt
   env:
-    - name: FOO
-      value: "bar"
+    - name: REDIS_URL
+      value: "dauji-cache.gcmzpx.ng.0001.use1.cache.amazonaws.com"  # Replace with your actual Redis URL if different
 run:
-  command: gunicorn server:app --log-level=debug
+  command: gunicorn -k uvicorn.workers.UvicornWorker app:app --log-level=debug
   network:
     port: 8002
   env:
-    - name: FLASK_APP
-      value: server
+    - name: APP_ENV
+      value: production
